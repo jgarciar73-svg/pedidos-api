@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pedidos - Maestro Detalle</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; background: #f3f4f8; margin: 0; color: #222; }
+    header { background: #2b4a8c; color: #fff; padding: 22px 16px; }
+    header h1 { margin: 0; font-size: 26px; }
+    header p { margin: 4px 0 0; opacity: .8; font-size: 14px; }
+    main { max-width: 1000px; margin: 20px auto; padding: 0 16px; display: grid; gap: 20px; }
+    .card { background: #fff; border-radius: 10px; padding: 18px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+    h2 { margin-top: 0; font-size: 18px; }
+    label { display: block; font-size: 13px; margin: 8px 0 3px; color: #555; }
+    input { padding: 8px; border: 1px solid #ccd; border-radius: 6px; width: 100%; }
+    .fila { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 8px; align-items: end; margin-top: 8px; }
+    button { background: #2b4a8c; color: #fff; border: 0; padding: 9px 14px; border-radius: 6px; cursor: pointer; }
+    button.sec { background: #6b7280; }
+    button.rojo { background: #c0392b; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    th, td { text-align: left; padding: 8px; border-bottom: 1px solid #e5e7eb; font-size: 14px; }
+    th { background: #f0f2f7; }
+    .total { text-align: right; font-weight: bold; margin-top: 6px; }
+    .pedido { border: 1px solid #e0e3eb; border-radius: 8px; padding: 12px; margin-top: 12px; }
+    .pedido h3 { margin: 0 0 4px; font-size: 16px; }
+    .vacio { color: #777; font-style: italic; }
+    #msg { color: #c0392b; font-size: 14px; min-height: 18px; }
+    @media (max-width: 600px) { .fila { grid-template-columns: 1fr 1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Gestion de Pedidos</h1>
+    <p>API Maestro-Detalle: Pedido (maestro) y sus productos (detalle)</p>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Nuevo pedido</h2>
+      <label for="cliente">Cliente</label>
+      <input id="cliente" placeholder="Nombre del cliente">
+      <label>Productos del pedido</label>
+      <div id="lineas"></div>
+      <div style="margin-top:10px; display:flex; gap:8px;">
+        <button class="sec" type="button" onclick="agregarLinea()">+ Agregar producto</button>
+        <button type="button" onclick="crearPedido()">Guardar pedido</button>
+      </div>
+      <p id="msg"></p>
+    </section>
+
+    <section class="card">
+      <h2>Pedidos registrados</h2>
+      <div id="lista"><p class="vacio">Cargando...</p></div>
+    </section>
+  </main>
+
+  <script>
+    const API = '/api/pedidos';
+    const msg = document.getElementById('msg');
+
+    function agregarLinea(p = '', c = 1, pr = '') {
+      const div = document.createElement('div');
+      div.className = 'fila';
+      div.innerHTML =
+        '<div><input class="prod" placeholder="Producto" value="' + p + '"></div>' +
+        '<div><input class="cant" type="number" min="1" placeholder="Cantidad" value="' + c + '"></div>' +
+        '<div><input class="prec" type="number" min="0" step="0.01" placeholder="Precio" value="' + pr + '"></div>' +
+        '<button class="rojo" type="button" onclick="this.parentElement.remove()">X</button>';
+      document.getElementById('lineas').appendChild(div);
+    }
+
+    async function crearPedido() {
+      msg.textContent = '';
+      const cliente = document.getElementById('cliente').value.trim();
+      const detalles = [...document.querySelectorAll('#lineas .fila')].map(f => ({
+        producto: f.querySelector('.prod').value,
+        cantidad: f.querySelector('.cant').value,
+        precio: f.querySelector('.prec').value
+      }));
+      const r = await fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cliente, detalles })
+      });
+      const data = await r.json();
+      if (!r.ok) { msg.textContent = data.error; return; }
+      document.getElementById('cliente').value = '';
+      document.getElementById('lineas').innerHTML = '';
+      agregarLinea();
+      cargar();
+    }
+
+    async function eliminar(id) {
+      await fetch(API + '/' + id, { method: 'DELETE' });
+      cargar();
+    }
+
+    function esc(t) {
+      return String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    async function cargar() {
+      const r = await fetch(API);
+      const pedidos = await r.json();
+      const cont = document.getElementById('lista');
+      if (!pedidos.length) { cont.innerHTML = '<p class="vacio">Todavia no hay pedidos.</p>'; return; }
+      cont.innerHTML = pedidos.map(p =>
+        '<div class="pedido">' +
+        '<h3>Pedido #' + p.id + ' - ' + esc(p.cliente) + '</h3>' +
+        '<small>Fecha: ' + esc(p.fecha) + '</small>' +
+        '<table><tr><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th></tr>' +
+        (p.detalles.length ? p.detalles.map(d =>
+          '<tr><td>' + esc(d.producto) + '</td><td>' + d.cantidad + '</td><td>Q' + d.precio.toFixed(2) +
+          '</td><td>Q' + (d.cantidad * d.precio).toFixed(2) + '</td></tr>').join('')
+          : '<tr><td colspan="4" class="vacio">Sin productos</td></tr>') +
+        '</table>' +
+        '<div class="total">Total: Q' + p.total.toFixed(2) + '</div>' +
+        '<button class="rojo" onclick="eliminar(' + p.id + ')">Eliminar pedido</button>' +
+        '</div>').join('');
+    }
+
+    agregarLinea();
+    cargar();
+  </script>
+</body>
+</html>

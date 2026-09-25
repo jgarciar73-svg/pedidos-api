@@ -1,0 +1,19 @@
+{
+  "name": "pedidos-api",
+  "version": "1.0.0",
+  "description": "API Maestro-Detalle de pedidos con frontend web - Reto Web",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test/smoke.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "author": "Joshua Eduardo Garcia Reyes (1890-22-5831)",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  }
+}
