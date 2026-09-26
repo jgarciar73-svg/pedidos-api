@@ -1,16 +1,13 @@
-// Pruebas basicas de la API (Mision 5: pruebas de ingreso).
-// Uso local:            npm test
-// Contra el hosting:    BASE_URL=https://tu-app.onrender.com npm test
+// Pruebas de la API (Mision 5). Ninguna escribe datos reales en la base.
+// Local (necesita .env con DB_PASSWORD):   npm test
+// Contra el hosting:                       BASE_URL=https://tu-app.onrender.com npm test
 const assert = require('assert');
-const os = require('os');
-const path = require('path');
 
 async function main() {
   let base = process.env.BASE_URL;
   let server;
 
   if (!base) {
-    process.env.DB_FILE = path.join(os.tmpdir(), 'pedidos-test-' + Date.now() + '.json');
     const app = require('../server');
     server = app.listen(0);
     base = 'http://127.0.0.1:' + server.address().port;
@@ -23,9 +20,12 @@ async function main() {
       body: cuerpo ? JSON.stringify(cuerpo) : undefined
     });
     const texto = await r.text();
-    return { status: r.status, data: texto ? JSON.parse(texto) : null };
+    let data = null;
+    try { data = texto ? JSON.parse(texto) : null; } catch (e) { data = texto; }
+    return { status: r.status, data };
   };
 
+  const maestro = { carnet: 'PRUEBA-0', nombre: 'Prueba', correo: 'prueba@example.com' };
   let ok = 0;
   const prueba = async (nombre, fn) => {
     await fn();
@@ -38,60 +38,51 @@ async function main() {
   await prueba('GET /api/health responde ok', async () => {
     const r = await req('GET', '/api/health');
     assert.strictEqual(r.status, 200);
-    assert.strictEqual(r.data.estado, 'ok');
   });
 
-  let id;
-  await prueba('POST /api/pedidos crea pedido con detalle y calcula total', async () => {
-    const r = await req('POST', '/api/pedidos', {
-      cliente: 'Cliente Prueba',
-      detalles: [
-        { producto: 'Teclado', cantidad: 2, precio: 100 },
-        { producto: 'Mouse', cantidad: 1, precio: 50.5 }
-      ]
-    });
-    assert.strictEqual(r.status, 201);
-    assert.strictEqual(r.data.detalles.length, 2);
-    assert.strictEqual(r.data.total, 250.5);
-    id = r.data.id;
+  await prueba('GET /api/health/db confirma conexion a SQL Server', async () => {
+    const r = await req('GET', '/api/health/db');
+    assert.strictEqual(r.status, 200, JSON.stringify(r.data));
   });
 
-  await prueba('POST /api/pedidos sin cliente devuelve 400', async () => {
-    const r = await req('POST', '/api/pedidos', { detalles: [] });
+  await prueba('GET /api/misiones devuelve el catalogo', async () => {
+    const r = await req('GET', '/api/misiones');
+    assert.strictEqual(r.status, 200);
+    assert.ok(Array.isArray(r.data) && r.data.length > 0);
+    assert.ok('misionId' in r.data[0] && 'nombre' in r.data[0]);
+  });
+
+  await prueba('GET /api/estudiantes lista alumnos con sus misiones', async () => {
+    const r = await req('GET', '/api/estudiantes');
+    assert.strictEqual(r.status, 200);
+    assert.ok(Array.isArray(r.data));
+    if (r.data.length) assert.ok(Array.isArray(r.data[0].misiones));
+  });
+
+  await prueba('POST /api/registro sin maestro devuelve 400', async () => {
+    const r = await req('POST', '/api/registro', { detalle: [] });
     assert.strictEqual(r.status, 400);
   });
 
-  await prueba('GET /api/pedidos/:id devuelve el pedido con su detalle', async () => {
-    const r = await req('GET', '/api/pedidos/' + id);
-    assert.strictEqual(r.status, 200);
-    assert.strictEqual(r.data.cliente, 'Cliente Prueba');
+  await prueba('POST /api/registro con estado no booleano devuelve 400', async () => {
+    const r = await req('POST', '/api/registro', { maestro, detalle: [{ misionId: 1, estado: 'si' }] });
+    assert.strictEqual(r.status, 400);
   });
 
-  await prueba('POST /api/pedidos/:id/detalles agrega una linea', async () => {
-    const r = await req('POST', '/api/pedidos/' + id + '/detalles', { producto: 'Cable', cantidad: 3, precio: 10 });
-    assert.strictEqual(r.status, 201);
-    assert.strictEqual(r.data.total, 280.5);
+  await prueba('POST /api/registro con mision inexistente devuelve error de referencia', async () => {
+    const r = await req('POST', '/api/registro', { maestro, detalle: [{ misionId: 99999, estado: true }] });
+    assert.strictEqual(r.status, 400);
+    assert.ok(/referencia/i.test(r.data.error));
   });
 
-  await prueba('PUT /api/pedidos/:id actualiza el cliente', async () => {
-    const r = await req('PUT', '/api/pedidos/' + id, { cliente: 'Otro Cliente' });
-    assert.strictEqual(r.data.cliente, 'Otro Cliente');
-  });
-
-  await prueba('GET /api/pedidos lista los pedidos', async () => {
-    const r = await req('GET', '/api/pedidos');
-    assert.ok(r.data.some(p => p.id === id));
-  });
-
-  await prueba('DELETE /api/pedidos/:id elimina y luego da 404', async () => {
-    const d = await req('DELETE', '/api/pedidos/' + id);
-    assert.strictEqual(d.status, 204);
-    const r = await req('GET', '/api/pedidos/' + id);
-    assert.strictEqual(r.status, 404);
+  await prueba('El error de referencia no dejo al estudiante de prueba en la base', async () => {
+    const r = await req('GET', '/api/estudiantes');
+    assert.ok(!r.data.some(e => e.carnet === maestro.carnet));
   });
 
   console.log('\n' + ok + ' pruebas pasaron.');
   if (server) server.close();
+  process.exit(0);
 }
 
 main().catch(e => {

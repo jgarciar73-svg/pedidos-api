@@ -1,45 +1,54 @@
-# Pedidos API (Maestro-Detalle)
+# API Maestro-Detalle con Catalogo y Control de Estado
 
-Reto Web - API en Node.js/Express con frontend.
+Reto Web - Node.js, Express y SQL Server.
 
 Autor: Joshua Eduardo Garcia Reyes - Carnet 1890-22-5831
 
 ## Que hace
 
-Un pedido (maestro) tiene varias lineas de producto (detalle). El frontend en `/` permite crear, ver y eliminar pedidos.
-
-## Ejecutar en local
-
-```bash
-npm install
-npm start
-```
-
-Abrir http://localhost:3000
+- `POST /api/registro` recibe un JSON maestro-detalle: el maestro es el estudiante y el detalle son sus misiones con estado `true/false`.
+- Si el carnet no existe lo inserta; si existe, actualiza nombre y correo.
+- Cada `misionId` se valida contra el catalogo. Si alguno no existe devuelve un error de referencia y no guarda nada.
+- Se puede enviar varias veces: las misiones nuevas se insertan y las existentes actualizan su estado.
+- El frontend (`/`) muestra el tablero de avance de todos los alumnos y un formulario para registrar el propio.
 
 ## Endpoints
 
 | Metodo | Ruta | Descripcion |
 |--------|------|-------------|
 | GET | /api/health | Estado del servicio |
-| GET | /api/pedidos | Lista de pedidos con total |
-| GET | /api/pedidos/:id | Un pedido con su detalle |
-| POST | /api/pedidos | Crea pedido (cliente, detalles[]) |
-| PUT | /api/pedidos/:id | Actualiza cliente o fecha |
-| DELETE | /api/pedidos/:id | Elimina pedido |
-| POST | /api/pedidos/:id/detalles | Agrega linea al detalle |
-| DELETE | /api/pedidos/:id/detalles/:detalleId | Elimina una linea |
+| GET | /api/health/db | Prueba la conexion a SQL Server |
+| GET | /api/misiones | Catalogo de misiones |
+| GET | /api/estudiantes | Estudiantes con sus misiones y porcentaje |
+| POST | /api/registro | Registra o actualiza estudiante y misiones |
 
-Ejemplo de POST /api/pedidos:
+Ejemplo de POST /api/registro:
 
 ```json
 {
-  "cliente": "Maria Lopez",
-  "detalles": [
-    { "producto": "Teclado", "cantidad": 2, "precio": 100 }
+  "maestro": {
+    "carnet": "1890-00-00000",
+    "nombre": "NOMBRE COMPLETO",
+    "correo": "usuario@miumg.edu.gt"
+  },
+  "detalle": [
+    { "misionId": 1, "estado": true },
+    { "misionId": 2, "estado": false }
   ]
 }
 ```
+
+## Ejecutar en local
+
+```bash
+npm install
+cp .env.example .env   # y escribir DB_PASSWORD
+npm start
+```
+
+## Variables de entorno
+
+`DB_USER`, `DB_PASSWORD`, `DB_SERVER`, `DB_NAME`. La contrasena no se guarda en el repositorio: va en `.env` (local) o en la seccion Environment de Render.
 
 ## Pruebas
 
@@ -52,3 +61,4 @@ BASE_URL=https://tu-app.onrender.com npm test
 
 - Build command: `npm install`
 - Start command: `npm start`
+- Environment: `DB_PASSWORD` (y opcionalmente el resto)
