@@ -4,6 +4,15 @@ Reto Web - Node.js, Express y SQL Server.
 
 Autor: Joshua Eduardo Garcia Reyes - Carnet 1890-22-5831
 
+## Enlaces en linea
+
+- Tablero (frontend): https://pedidos-api-ms9e.onrender.com
+- Catalogo de misiones: https://pedidos-api-ms9e.onrender.com/api/misiones
+- Estudiantes y avance: https://pedidos-api-ms9e.onrender.com/api/estudiantes
+- Registro (POST): https://pedidos-api-ms9e.onrender.com/api/registro
+
+> El servicio esta en el plan gratuito de Render: si estuvo inactivo, la primera peticion puede tardar unos 50 segundos.
+
 ## Que hace
 
 - `POST /api/registro` recibe un JSON maestro-detalle: el maestro es el estudiante y el detalle son sus misiones con estado `true/false`.
@@ -48,7 +57,11 @@ npm start
 
 ## Variables de entorno
 
-`DB_USER`, `DB_PASSWORD`, `DB_SERVER`, `DB_NAME`. La contrasena no se guarda en el repositorio: va en `.env` (local) o en la seccion Environment de Render.
+`DB_USER`, `DB_PASSWORD`, `DB_SERVER`, `DB_NAME`. En `DB_SERVER` va el nombre del servidor (`svr-sql-ctezo.southcentralus.cloudapp.azure.com`), no la IP, porque la conexion cifrada no acepta direcciones IP. La contrasena no se guarda en el repositorio: va en `.env` (local) o en la seccion Environment de Render.
+
+## Base de datos
+
+El archivo `database.sql` tiene la estructura de las tres tablas (Estudiantes, Misiones, EstudianteMisiones) segun el diagrama del reto.
 
 ## Pruebas
 
